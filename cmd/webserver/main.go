@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	poker "github.com/tsugoshi/learn-go-application"
 )
@@ -11,19 +10,11 @@ import (
 const dbFileName = "game.db.json"
 
 func main() {
-
-	db, err := os.OpenFile(dbFileName, os.O_RDWR|os.O_CREATE, 0666)
-
+	store, close, err := poker.FileSystemPlayerStoreFromFile(dbFileName)
 	if err != nil {
-		log.Fatalf("Error opening file database (%s): %v", dbFileName, err)
+		log.Fatal(err)
 	}
-
-	store, err := poker.NewFileSystemPlayerStore(db)
-
-	if err != nil {
-		log.Fatalf("Error creating FileSystemPlayerStore from dbFile %v", err)
-	}
-
+	defer close()
 	server := poker.NewPlayerServer(store)
 
 	if err := http.ListenAndServe(":5000", server); err != nil {
