@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type StubPlayerStore struct {
@@ -26,6 +27,23 @@ func (s *StubPlayerStore) RecordWin(name string) {
 
 func (s *StubPlayerStore) GetLeague() League {
 	return s.league
+}
+
+type ScheduledAlert struct {
+	At     time.Duration
+	Amount int
+}
+
+type SpyBlindAlerter struct {
+	alerts []ScheduledAlert
+}
+
+func (s ScheduledAlert) String() string {
+	return fmt.Sprintf("%d amount chips at %v", s.Amount, s.At)
+}
+
+func (s *SpyBlindAlerter) ScheduleAlertAt(duration time.Duration, amount int) {
+	s.alerts = append(s.alerts, ScheduledAlert{duration, amount})
 }
 
 func assertLeague(t *testing.T, got, want []Player) {
@@ -89,5 +107,31 @@ func AssertPlayerWin(t *testing.T, store *StubPlayerStore, winner string) {
 	got := store.winCalls[0]
 	if got != winner {
 		t.Errorf("didn't record correct winner, got %q, want %q", got, winner)
+	}
+}
+
+func CheckSchedulingCases(cases []ScheduledAlert, t *testing.T, blindAlerter *SpyBlindAlerter) {
+	for i, want := range cases {
+		t.Run(fmt.Sprint(want), func(t *testing.T) {
+
+			if len(blindAlerter.alerts) <= i {
+				t.Fatalf("alert %d was not scheduled %v", i, blindAlerter.alerts)
+			}
+
+			got := blindAlerter.alerts[i]
+
+			AssertScheduledAlert(t, got, want)
+		})
+	}
+}
+
+func AssertScheduledAlert(t *testing.T, got, want ScheduledAlert) {
+
+	if got.Amount != want.Amount {
+		t.Errorf("Expected %d amount , got %d", want.Amount, got.Amount)
+	}
+
+	if got.At != want.At {
+		t.Errorf("expected scheduled at %v, got %v", want.At, got.At)
 	}
 }
