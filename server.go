@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 )
@@ -25,6 +28,26 @@ type PlayerServer struct {
 type Player struct {
 	Name string
 	Wins int
+}
+
+type playerServerWS struct {
+	*websocket.Conn
+}
+
+func newPlayerServerWS(w http.ResponseWriter, r *http.Request) *playerServerWS {
+	conn, err := wsUpgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("Error creating WebSocket", err)
+	}
+	return &playerServerWS{conn}
+}
+
+func (p *playerServerWS) WaitForMessage() string {
+	_, message, err := p.Conn.ReadMessage()
+	if err != nil {
+		log.Print("Error reading message from WebSocket", err)
+	}
+	return string(message)
 }
 
 var wsUpgrader = websocket.Upgrader{
@@ -81,10 +104,13 @@ func (p *PlayerServer) gameHandler(w http.ResponseWriter, r *http.Request) {
 
 func (p *PlayerServer) webSocket(w http.ResponseWriter, r *http.Request) {
 
-	conn, _ := wsUpgrader.Upgrade(w, r, nil)
+	ws := newPlayerServerWS(w, r)
+	numberOfPlayersMessage := ws.WaitForMessage()
+	numberOfPlayers, _ := strconv.Atoi(string(numberOfPlayersMessage))
+	p.game.Start(numberOfPlayers, ioutil.Discard) //TODO: pass io.Writer
 
-	_, message, _ := conn.ReadMessage()
-	p.store.RecordWin(string(message))
+	message := ws.WaitForMessage()
+	p.game.Finish(string(message))
 }
 
 func (p *PlayerServer) showScore(w http.ResponseWriter, player string) {

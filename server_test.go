@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	poker "github.com/tsugoshi/learn-go-application"
 )
 
@@ -120,25 +119,6 @@ func TestGame(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		poker.AssertStatus(t, response.Code, http.StatusOK)
-	})
-
-	t.Run("when message from websocket its winner of the game", func(t *testing.T) {
-		store := &poker.StubPlayerStore{}
-		winner := "Ruth"
-		server := httptest.NewServer(poker.MustMakePlayerServer(t, store, dummyGame))
-		defer server.Close()
-
-		wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws"
-		ws := poker.MustDialWS(t, wsURL)
-		defer ws.Close()
-
-		if err := ws.WriteMessage(websocket.TextMessage, []byte(winner)); err != nil {
-			t.Fatalf("could not send message over ws connection, %v", err)
-		}
-
-		// We Need To Wait For Connection
-		time.Sleep(10 * time.Millisecond)
-		poker.AssertPlayerWin(t, store, winner)
 	})
 
 	t.Run("start game with 3 players and declare Ruth as winner", func(t *testing.T) {
