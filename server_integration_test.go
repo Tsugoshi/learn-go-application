@@ -1,9 +1,11 @@
-package poker
+package poker_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	poker "github.com/tsugoshi/learn-go-application"
 )
 
 func TestRecordingWinsAndRetrievingThem(t *testing.T) {
@@ -11,36 +13,35 @@ func TestRecordingWinsAndRetrievingThem(t *testing.T) {
 	database, cleanDatabase := createTempFile(t, `[]`)
 	defer cleanDatabase()
 
-	store, err := NewFileSystemPlayerStore(database)
+	store, err := poker.NewFileSystemPlayerStore(database)
 	assertNoError(t, err)
 
-	server := NewPlayerServer(store)
+	server := poker.MustMakePlayerServer(t, store, &poker.GameSpy{})
 	player := "Pepper"
 
-	server.ServeHTTP(httptest.NewRecorder(), newPostWinRequest(player))
-	server.ServeHTTP(httptest.NewRecorder(), newPostWinRequest(player))
-	server.ServeHTTP(httptest.NewRecorder(), newPostWinRequest(player))
+	server.ServeHTTP(httptest.NewRecorder(), poker.NewPostWinRequest(player))
+	server.ServeHTTP(httptest.NewRecorder(), poker.NewPostWinRequest(player))
+	server.ServeHTTP(httptest.NewRecorder(), poker.NewPostWinRequest(player))
 
 	t.Run("get score", func(t *testing.T) {
 
 		response := httptest.NewRecorder()
-		server.ServeHTTP(response, newGetScoreRequest(player))
-		assertStatus(t, response.Code, http.StatusOK)
-
-		assertResponseBody(t, response.Body.String(), "3")
+		server.ServeHTTP(response, poker.NewGetScoreRequest(player))
+		poker.AssertStatus(t, response.Code, http.StatusOK)
+		poker.AssertResponseBody(t, response.Body.String(), "3")
 	})
 
 	t.Run("get league", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		server.ServeHTTP(response, newGetLeagueRequest())
+		server.ServeHTTP(response, poker.NewGetLeagueRequest())
 
-		assertStatus(t, response.Code, http.StatusOK)
-		got := getLeagueFromResponse(t, response.Body)
+		poker.AssertStatus(t, response.Code, http.StatusOK)
+		got := poker.GetLeagueFromResponse(t, response.Body)
 
-		want := []Player{
+		want := []poker.Player{
 			{player, 3},
 		}
 
-		assertLeague(t, got, want)
+		poker.AssertLeague(t, got, want)
 	})
 }
