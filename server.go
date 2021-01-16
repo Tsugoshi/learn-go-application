@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -48,6 +47,15 @@ func (p *playerServerWS) WaitForMessage() string {
 		log.Print("Error reading message from WebSocket", err)
 	}
 	return string(message)
+}
+
+func (w *playerServerWS) Write(p []byte) (n int, err error) {
+	err = w.WriteMessage(websocket.TextMessage, p)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
 }
 
 var wsUpgrader = websocket.Upgrader{
@@ -107,7 +115,7 @@ func (p *PlayerServer) webSocket(w http.ResponseWriter, r *http.Request) {
 	ws := newPlayerServerWS(w, r)
 	numberOfPlayersMessage := ws.WaitForMessage()
 	numberOfPlayers, _ := strconv.Atoi(string(numberOfPlayersMessage))
-	p.game.Start(numberOfPlayers, ioutil.Discard) //TODO: pass io.Writer
+	p.game.Start(numberOfPlayers, ws)
 
 	message := ws.WaitForMessage()
 	p.game.Finish(string(message))

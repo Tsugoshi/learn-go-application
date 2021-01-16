@@ -19,7 +19,7 @@ func TestCLI(t *testing.T) {
 		cli.PlayPoker()
 
 		assertMessagesSentToUser(t, stdout, poker.PlayerGreeting)
-		assertGameStartedWith(t, game, 7)
+		poker.AssertGameStartedWith(t, game, 7)
 	})
 
 	t.Run("start game with 8 players and record 'Cleo' as winner", func(t *testing.T) {
@@ -30,8 +30,8 @@ func TestCLI(t *testing.T) {
 
 		cli.PlayPoker()
 
-		assertGameStartedWith(t, game, 8)
-		assertFinishCalledWith(t, game, "Cleo")
+		poker.AssertGameStartedWith(t, game, 8)
+		poker.AssertFinishCalledWith(t, game, "Cleo")
 	})
 
 	t.Run("it prints an error when a non numeric value is entered and does not start the game", func(t *testing.T) {
@@ -60,13 +60,6 @@ func userSends(messages ...string) io.Reader {
 	return strings.NewReader(strings.Join(messages, "\n"))
 }
 
-func assertGameStartedWith(t *testing.T, game *poker.GameSpy, numberOfPlayersWanted int) {
-	t.Helper()
-	if game.StartedWith != numberOfPlayersWanted {
-		t.Errorf("wanted Start called with %d but got %d", numberOfPlayersWanted, game.StartedWith)
-	}
-}
-
 func assertGameNotFinished(t *testing.T, game *poker.GameSpy) {
 	t.Helper()
 	if game.FinishedCalled {
@@ -78,12 +71,5 @@ func assertGameNotStarted(t *testing.T, game *poker.GameSpy) {
 	t.Helper()
 	if game.StartCalled {
 		t.Errorf("game should not have started")
-	}
-}
-
-func assertFinishCalledWith(t *testing.T, game *poker.GameSpy, winner string) {
-	t.Helper()
-	if game.FinishedWith != winner {
-		t.Errorf("expected finish called with %q but got %q", winner, game.FinishedWith)
 	}
 }

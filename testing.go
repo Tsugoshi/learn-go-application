@@ -34,13 +34,15 @@ func (s *StubPlayerStore) GetLeague() League {
 type GameSpy struct {
 	StartedWith    int
 	StartCalled    bool
+	BlindAlerter   []byte
 	FinishedWith   string
 	FinishedCalled bool
 }
 
-func (g *GameSpy) Start(numberOfPlayers int, alertsDestination io.Writer) {
+func (g *GameSpy) Start(numberOfPlayers int, out io.Writer) {
 	g.StartedWith = numberOfPlayers
 	g.StartCalled = true
+	out.Write(g.BlindAlerter)
 }
 
 func (g *GameSpy) Finish(winner string) {
@@ -183,4 +185,37 @@ func WriteWSMessage(t *testing.T, conn *websocket.Conn, message string) {
 	if err != nil {
 		t.Fatalf("could not send message over ws connection, %v", err)
 	}
+}
+
+func AssertFinishCalledWith(t testing.TB, game *GameSpy, winner string) {
+	t.Helper()
+	passed := retryUntil(500*time.Millisecond, func() bool {
+		return game.FinishedWith == winner
+	})
+
+	if !passed {
+		t.Errorf("expected finish called with %q, but got %q", winner, game.FinishedWith)
+	}
+}
+
+func AssertGameStartedWith(t *testing.T, game *GameSpy, numberOfPlayersWanted int) {
+	t.Helper()
+
+	passed := retryUntil(500*time.Millisecond, func() bool {
+		return game.StartedWith == numberOfPlayersWanted
+	})
+
+	if !passed {
+		t.Errorf("wanted Start called with %d but got %d", numberOfPlayersWanted, game.StartedWith)
+	}
+}
+
+func retryUntil(d time.Duration, f func() bool) bool {
+	deadline := time.Now().Add(d)
+	for time.Now().Before(deadline) {
+		if f() {
+			return true
+		}
+	}
+	return false
 }
